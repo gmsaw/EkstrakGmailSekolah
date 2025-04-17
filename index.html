@@ -338,7 +338,7 @@
                         statusText.textContent = `Memproses ${school.NAMA_SEKOLAH || school['NAMA SEKOLAH'] || 'Sekolah'} (${school.NPSN})...`;
                         
                         // Tambahkan delay sebelum memproses sekolah berikutnya
-                        await new Promise(resolve => setTimeout(resolve, 100));
+                        await new Promise(resolve => setTimeout(resolve, 300));
                         
                         const email = await fetchSchoolEmail(school.NPSN);
                         
