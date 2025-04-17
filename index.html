@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ekstraktor Email Sekolah</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .upload-area {
+            border: 2px dashed #adb5bd;
+            border-radius: 8px;
+            padding: 30px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #f8f9fa;
+        }
+        .upload-area:hover {
+            border-color: #0d6efd;
+            background-color: #e9f0ff;
+        }
+        .progress {
+            height: 25px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+        }
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        .result-table {
+            margin-top: 20px;
+        }
+        .btn-retry {
+            margin-left: 10px;
+            display: none;
+        }
+        .card {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            padding: 1rem 1.5rem;
+        }
+        .table-responsive {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .table th, .table td {
+            vertical-align: middle;
+            padding: 0.75rem;
+        }
+        .status-badge {
+            padding: 0.35em 0.65em;
+            font-size: 0.75em;
+            font-weight: 700;
+            border-radius: 0.375rem;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            .upload-area {
+                padding: 20px 10px;
+            }
+            .btn-group-responsive {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .btn-group-responsive > div {
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+            }
+            .btn-group-responsive .btn {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+            .btn-retry {
+                margin-left: 0;
+                margin-top: 10px;
+            }
+            .table th, .table td {
+                padding: 0.5rem;
+                font-size: 0.875rem;
+            }
+            .card-header h5 {
+                font-size: 1.1rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .upload-area p {
+                margin-bottom: 5px;
+                font-size: 0.9rem;
+            }
+            .status-text {
+                font-size: 0.8rem;
+            }
+            .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-3 py-md-5">
+        <h1 class="text-center mb-3 mb-md-4">Ekstraktor Email Sekolah</h1>
+        
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Upload Data Sekolah</h5>
+            </div>
+            <div class="card-body">
+                <div id="uploadArea" class="upload-area">
+                    <p class="mb-1">Klik atau seret file Excel ke sini</p>
+                    <p class="text-muted small mb-0">Format file harus sesuai dengan contoh (mengandung kolom NPSN)</p>
+                    <input type="file" id="fileInput" accept=".xlsx, .xls" class="d-none">
+                </div>
+                
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-3 btn-group-responsive">
+                    <div class="d-flex flex-column flex-md-row w-100">
+                        <button id="processBtn" class="btn btn-success mb-2 mb-md-0 me-md-2">
+                            Proses Data
+                        </button>
+                        <button id="retryBtn" class="btn btn-warning btn-retry">
+                            Coba Ulang yang Gagal
+                        </button>
+                    </div>
+                    <button id="downloadBtn" class="btn btn-primary mt-2 mt-md-0 ms-md-2">
+                        Download Hasil
+                    </button>
+                </div>
+                
+                <div id="progressContainer" class="d-none">
+                    <div class="progress">
+                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%">0%</div>
+                    </div>
+                    <p id="statusText" class="text-center status-text mt-2">Memproses data...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="resultContainer" class="card shadow-sm mt-4 d-none">
+            <div class="card-header bg-info text-white d-flex flex-column flex-md-row justify-content-between align-items-center">
+                <h5 class="mb-2 mb-md-0">Hasil Ekstraksi Email</h5>
+                <span id="successCount" class="badge bg-success status-badge mt-1 mt-md-0"></span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table id="resultTable" class="table table-striped table-bordered mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="text-nowrap">NO</th>
+                                <th class="text-nowrap">NAMA SEKOLAH</th>
+                                <th class="text-nowrap">NPSN</th>
+                                <th class="text-nowrap">EMAIL</th>
+                                <th class="text-nowrap">STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('fileInput');
+            const uploadArea = document.getElementById('uploadArea');
+            const processBtn = document.getElementById('processBtn');
+            const retryBtn = document.getElementById('retryBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const statusText = document.getElementById('statusText');
+            const resultContainer = document.getElementById('resultContainer');
+            const resultTable = document.getElementById('resultTable').getElementsByTagName('tbody')[0];
+            const successCount = document.getElementById('successCount');
+            
+            let schoolData = [];
+            let processedData = [];
+            
+            // Initialize buttons state
+            processBtn.disabled = true;
+            downloadBtn.disabled = true;
+            
+            // Handle file upload
+            uploadArea.addEventListener('click', () => fileInput.click());
+            
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#0d6efd';
+                uploadArea.style.backgroundColor = '#e9f0ff';
+            });
+            
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.style.borderColor = '#adb5bd';
+                uploadArea.style.backgroundColor = '#f8f9fa';
+            });
+            
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.style.borderColor = '#adb5bd';
+                uploadArea.style.backgroundColor = '#f8f9fa';
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    handleFileSelection();
+                }
+            });
+            
+            fileInput.addEventListener('change', handleFileSelection);
+            
+            function handleFileSelection() {
+                if (fileInput.files.length) {
+                    const file = fileInput.files[0];
+                    uploadArea.innerHTML = `
+                        <p class="mb-1">File terpilih:</p>
+                        <p class="mb-0"><strong>${file.name}</strong></p>
+                        <small class="text-muted">${(file.size / 1024).toFixed(2)} KB</small>
+                    `;
+                    processBtn.disabled = false;
+                    readExcelFile(file);
+                }
+            }
+            
+            function readExcelFile(file) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Ambil data dari sheet pertama
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    schoolData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    console.log('Data sekolah yang dibaca:', schoolData);
+                };
+                
+                reader.onerror = function() {
+                    alert('Gagal membaca file. Pastikan file tidak rusak dan formatnya benar.');
+                    uploadArea.innerHTML = `
+                        <p>Klik atau seret file Excel ke sini</p>
+                        <p class="text-muted small">Format file harus sesuai dengan contoh (mengandung kolom NPSN)</p>
+                    `;
+                    processBtn.disabled = true;
+                };
+                
+                reader.readAsArrayBuffer(file);
+            }
+            
+            // Proses data untuk ekstraksi email
+            processBtn.addEventListener('click', async function() {
+                if (schoolData.length === 0) {
+                    alert('Tidak ada data sekolah yang bisa diproses');
+                    return;
+                }
+                
+                processBtn.disabled = true;
+                retryBtn.style.display = 'none';
+                downloadBtn.disabled = true;
+                progressContainer.classList.remove('d-none');
+                resultContainer.classList.add('d-none');
+                processedData = [];
+                
+                // Filter hanya data dengan NPSN valid
+                const validSchools = schoolData.filter(school => school.NPSN && String(school.NPSN).length >= 8);
+                
+                if (validSchools.length === 0) {
+                    statusText.textContent = 'Tidak ditemukan data dengan NPSN valid';
+                    progressBar.style.width = '100%';
+                    progressBar.textContent = '100%';
+                    progressBar.classList.remove('progress-bar-animated');
+                    return;
+                }
+                
+                await processSchools(validSchools);
+            });
+            
+            // Fungsi untuk memproses ulang data yang gagal
+            retryBtn.addEventListener('click', async function() {
+                if (processedData.length === 0) {
+                    alert('Tidak ada data yang bisa diproses ulang');
+                    return;
+                }
+                
+                const failedSchools = processedData
+                    .filter(item => item.status === 'Gagal')
+                    .map(item => ({
+                        NO: item.no,
+                        NAMA_SEKOLAH: item.nama,
+                        NPSN: item.npsn
+                    }));
+                
+                if (failedSchools.length === 0) {
+                    alert('Tidak ada data yang gagal untuk diproses ulang');
+                    return;
+                }
+                
+                processBtn.disabled = true;
+                retryBtn.style.display = 'none';
+                downloadBtn.disabled = true;
+                progressContainer.classList.remove('d-none');
+                
+                await processSchools(failedSchools, true);
+            });
+            
+            // Fungsi utama untuk memproses data sekolah
+            async function processSchools(schoolsToProcess, isRetry = false) {
+                const total = schoolsToProcess.length;
+                let completed = 0;
+                
+                // Reset progress bar
+                progressBar.style.width = '0%';
+                progressBar.textContent = '0%';
+                progressBar.classList.add('progress-bar-animated');
+                
+                // Jika ini adalah retry, kita hanya ingin memproses yang gagal
+                if (isRetry) {
+                    // Hapus data yang gagal dari processedData
+                    processedData = processedData.filter(item => item.status !== 'Gagal');
+                }
+                
+                for (const school of schoolsToProcess) {
+                    try {
+                        statusText.textContent = `Memproses ${school.NAMA_SEKOLAH || school['NAMA SEKOLAH'] || 'Sekolah'} (${school.NPSN})...`;
+                        
+                        // Tambahkan delay sebelum memproses sekolah berikutnya
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        const email = await fetchSchoolEmail(school.NPSN);
+                        
+                        processedData.push({
+                            no: school.NO || school['NO'] || processedData.length + 1,
+                            nama: school.NAMA_SEKOLAH || school['NAMA SEKOLAH'] || 'Nama tidak tersedia',
+                            npsn: school.NPSN,
+                            email: email || 'Tidak ditemukan',
+                            status: email ? 'Berhasil' : 'Gagal'
+                        });
+                        
+                        completed++;
+                        const progress = Math.round((completed / total) * 100);
+                        progressBar.style.width = `${progress}%`;
+                        progressBar.textContent = `${progress}%`;
+                        
+                    } catch (error) {
+                        console.error(`Gagal memproses NPSN ${school.NPSN}:`, error);
+                        processedData.push({
+                            no: school.NO || school['NO'] || processedData.length + 1,
+                            nama: school.NAMA_SEKOLAH || school['NAMA SEKOLAH'] || 'Nama tidak tersedia',
+                            npsn: school.NPSN,
+                            email: 'Error: ' + (error.message || 'Gagal memproses'),
+                            status: 'Gagal'
+                        });
+                    }
+                }
+                
+                // Selesai memproses
+                progressBar.classList.remove('progress-bar-animated');
+                
+                // Tampilkan hasil
+                displayResults();
+                downloadBtn.disabled = false;
+                processBtn.disabled = false;
+                
+                const success = processedData.filter(d => d.status === 'Berhasil').length;
+                const totalProcessed = processedData.length;
+                statusText.textContent = `Proses selesai! ${success} dari ${totalProcessed} email berhasil ditemukan.`;
+                
+                // Update success count badge
+                successCount.textContent = `${success}/${totalProcessed} Berhasil`;
+                
+                // Tampilkan tombol retry hanya jika ada yang gagal dan proses sudah selesai
+                const failedCount = processedData.filter(d => d.status === 'Gagal').length;
+                if (failedCount > 0) {
+                    retryBtn.style.display = 'inline-block';
+                } else {
+                    retryBtn.style.display = 'none';
+                }
+            }
+            
+            async function fetchSchoolEmail(npsn) {
+                const url = `https://referensi.data.kemdikbud.go.id/tabs.php?npsn=${npsn}`;
+                
+                try {
+                    // Menggunakan proxy CORS untuk menghindari masalah CORS
+                    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+                    const response = await fetch(proxyUrl, {
+                        timeout: 10000 // Timeout setelah 10 detik
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (!data.contents) {
+                        throw new Error('Data tidak ditemukan');
+                    }
+                    
+                    // Parse HTML dari respons
+                    const parser = new DOMParser();
+                    const htmlDoc = parser.parseFromString(data.contents, 'text/html');
+                    
+                    // Cari tabel yang berisi informasi email
+                    const tables = htmlDoc.getElementsByTagName('table');
+                    let email = null;
+                    
+                    // Iterasi melalui semua tabel untuk mencari email
+                    for (let table of tables) {
+                        const rows = table.getElementsByTagName('tr');
+                        
+                        for (let row of rows) {
+                            const cells = row.getElementsByTagName('td');
+                            
+                            // Cari sel yang berisi teks 'email' atau '@'
+                            for (let i = 0; i < cells.length; i++) {
+                                const cellText = cells[i].textContent.trim();
+                                
+                                // Cari email dengan regex yang lebih akurat
+                                const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+                                const emailMatch = cellText.match(emailRegex);
+                                
+                                if (emailMatch) {
+                                    email = emailMatch[0].toLowerCase();
+                                    break;
+                                } else if (cellText.toLowerCase().includes('email') && i < cells.length - 1) {
+                                    const nextCellText = cells[i + 1].textContent.trim();
+                                    const nextEmailMatch = nextCellText.match(emailRegex);
+                                    if (nextEmailMatch) {
+                                        email = nextEmailMatch[0].toLowerCase();
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if (email) break;
+                        }
+                        
+                        if (email) break;
+                    }
+                    
+                    return email;
+                    
+                } catch (error) {
+                    console.error(`Gagal mengambil data untuk NPSN ${npsn}:`, error);
+                    return null;
+                }
+            }
+            
+            function displayResults() {
+                resultTable.innerHTML = '';
+                
+                processedData.forEach(data => {
+                    const row = resultTable.insertRow();
+                    
+                    // NO
+                    row.insertCell(0).textContent = data.no;
+                    
+                    // Nama Sekolah
+                    const namaCell = row.insertCell(1);
+                    namaCell.textContent = data.nama;
+                    if (data.nama.length > 30) {
+                        namaCell.title = data.nama;
+                        namaCell.classList.add('text-truncate');
+                    }
+                    
+                    // NPSN
+                    row.insertCell(2).textContent = data.npsn;
+                    
+                    // Email
+                    const emailCell = row.insertCell(3);
+                    emailCell.textContent = data.email;
+                    if (data.status === 'Gagal') {
+                        emailCell.classList.add('text-danger');
+                    }
+                    
+                    // Status
+                    const statusCell = row.insertCell(4);
+                    const statusBadge = document.createElement('span');
+                    statusBadge.className = data.status === 'Berhasil' ? 'badge bg-success' : 'badge bg-danger';
+                    statusBadge.textContent = data.status;
+                    statusCell.appendChild(statusBadge);
+                });
+                
+                resultContainer.classList.remove('d-none');
+                
+                // Scroll ke hasil
+                resultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                
+                // Update success count
+                const success = processedData.filter(d => d.status === 'Berhasil').length;
+                const total = processedData.length;
+                successCount.textContent = `${success}/${total} Berhasil`;
+            }
+            
+            // Download hasil sebagai Excel
+            downloadBtn.addEventListener('click', function() {
+                if (processedData.length === 0) {
+                    alert('Tidak ada data yang bisa didownload');
+                    return;
+                }
+                
+                // Format nama file dengan tanggal
+                const now = new Date();
+                const dateString = `${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
+                const timeString = `${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}`;
+                
+                // Buat worksheet dari data
+                const ws = XLSX.utils.json_to_sheet(processedData.map(d => ({
+                    'NO': d.no,
+                    'NAMA SEKOLAH': d.nama,
+                    'NPSN': d.npsn,
+                    'EMAIL': d.email,
+                    'STATUS': d.status
+                })));
+                
+                // Buat workbook
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Hasil Ekstraksi Email');
+                
+                // Download file
+                XLSX.writeFile(wb, `hasil_email_sekolah_${dateString}_${timeString}.xlsx`);
+            });
+        });
+    </script>
+</body>
+</html>
